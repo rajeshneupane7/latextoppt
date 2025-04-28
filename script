@@ -1,0 +1,39 @@
+from pdf2image import convert_from_path
+from pptx import Presentation
+from pptx.util import Inches
+import os
+import re
+
+def pdf_to_ppt(pdf_path, ppt_path):
+    # Specify the path to Poppler utilities
+    poppler_path = r"poppler-24.08.0\Library\bin"# Update this path
+    
+    # Convert PDF to images with high DPI
+    dpi = 300  # You can adjust this value based on your needs
+    images = convert_from_path(pdf_path, dpi=dpi, poppler_path=poppler_path)
+    image_path = "temp_images"
+    os.makedirs(image_path, exist_ok=True)
+    for i, image in enumerate(images):
+        image.save(f"{image_path}/page_{i+1:03}.jpg", quality=95)  # Save with high quality and zero-padding
+
+    # Create PPT from images
+    prs = Presentation()
+    prs.slide_width = Inches(16)
+    prs.slide_height = Inches(9)
+    image_files = [f for f in os.listdir(image_path) if f.endswith('.jpg')]
+    image_files.sort(key=lambda x: int(re.search(r'page_(\d+)', x).group(1)))  # Sort images based on page numbers
+    for image_file in image_files:
+        slide_layout = prs.slide_layouts[6]  # blank layout
+        slide = prs.slides.add_slide(slide_layout)
+        left = Inches(0)
+        top = Inches(0)
+        slide.shapes.add_picture(os.path.join(image_path, image_file), left, top, width=Inches(16))  # Set image width to fit slide
+    prs.save(ppt_path)
+
+    # Optionally, remove the temp image directory
+    import shutil
+    shutil.rmtree(image_path)
+
+pdf_path = "slide_1.pdf"
+ppt_path = "presentation_1.pptx"
+pdf_to_ppt(pdf_path, ppt_path)
